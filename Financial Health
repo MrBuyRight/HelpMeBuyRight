@@ -5,3 +5,341 @@ git commit -m "first commit"
 git branch -M main
 git remote add origin https://github.com/MrBuyRight/HelpMeBuyRight.git
 git push -u origin main
+import React, { useState, useEffect } from 'react';
+import './App.css';
+
+function DashboardItem({ title, value, icon }) {
+  return (
+    <div className="dashboard-item">
+      <div className="icon">{icon}</div>
+      <div className="content">
+        <h2>{title}</h2>
+        <p>{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function NetWorth({ cash, investments, debt, carLoan, mortgage, studentLoans }) {
+  const netWorth = cash + investments - debt - carLoan - mortgage - studentLoans;
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
+  return (
+    <div className="net-worth">
+      <h2>Total Net Worth</h2>
+      <p>{formatCurrency(netWorth)}</p>
+    </div>
+  );
+}
+
+function LoanCalculator() {
+  const [loanAmount, setLoanAmount] = useState('100000');
+  const [downPayment, setDownPayment] = useState('20000');
+  const [interestRate, setInterestRate] = useState('5');
+  const [loanTerm, setLoanTerm] = useState('30');
+  const [activeTab, setActiveTab] = useState('calculator');
+
+  const calculateLoan = () => {
+    const amount = parseFloat(loanAmount.replace(/,/g, ''));
+    const down = parseFloat(downPayment.replace(/,/g, ''));
+    const rate = parseFloat(interestRate);
+    const term = parseFloat(loanTerm);
+
+    if (isNaN(amount) || isNaN(down) || isNaN(rate) || isNaN(term) || amount <= 0 || rate <= 0 || term <= 0) {
+      return {
+        monthlyPayment: '0.00',
+        totalInterest: '0.00',
+        totalLoanCost: '0.00',
+        totalCostWithDownPayment: '0.00',
+        amortizationSchedule: []
+      };
+    }
+
+    const principal = amount - down;
+    const monthlyRate = rate / 100 / 12;
+    const numberOfPayments = term * 12;
+    const monthlyPayment = (principal * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    const totalPayments = monthlyPayment * numberOfPayments;
+    const totalInterest = totalPayments - principal;
+
+    // Calculate amortization schedule
+    let balance = principal;
+    const amortizationSchedule = [];
+    for (let i = 1; i <= numberOfPayments; i++) {
+      const interestPayment = balance * monthlyRate;
+      const principalPayment = monthlyPayment - interestPayment;
+      balance -= principalPayment;
+      amortizationSchedule.push({
+        payment: i,
+        principalPayment: principalPayment,
+        interestPayment: interestPayment,
+        balance: balance
+      });
+    }
+
+    return {
+      monthlyPayment: monthlyPayment.toFixed(2),
+      totalInterest: totalInterest.toFixed(2),
+      totalLoanCost: totalPayments.toFixed(2),
+      totalCostWithDownPayment: (totalPayments + down).toFixed(2),
+      amortizationSchedule: amortizationSchedule
+    };
+  };
+
+  const { monthlyPayment, totalInterest, totalLoanCost, totalCostWithDownPayment, amortizationSchedule } = calculateLoan();
+
+  const formatNumber = (value) => {
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const handleInputChange = (setter) => (event) => {
+    const value = event.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setter(formatNumber(value));
+    }
+  };
+
+  return (
+    <div className="loan-calculator">
+      <h2>Loan Calculator</h2>
+      <div className="calculator-tabs">
+        <button 
+          className={activeTab === 'calculator' ? 'active' : ''} 
+          onClick={() => setActiveTab('calculator')}
+        >
+          Calculator
+        </button>
+        <button 
+          className={activeTab === 'amortization' ? 'active' : ''} 
+          onClick={() => setActiveTab('amortization')}
+        >
+          Amortization Schedule
+        </button>
+      </div>
+      {activeTab === 'calculator' ? (
+        <div className="calculator-content">
+          <div className="input-group">
+            <label htmlFor="loanAmount">Loan Amount ($)</label>
+            <input
+              id="loanAmount"
+              type="text"
+              value={loanAmount}
+              onChange={handleInputChange(setLoanAmount)}
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="downPayment">Down Payment ($)</label>
+            <input
+              id="downPayment"
+              type="text"
+              value={downPayment}
+              onChange={handleInputChange(setDownPayment)}
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="interestRate">Interest Rate (%)</label>
+            <input
+              id="interestRate"
+              type="text"
+              value={interestRate}
+              onChange={handleInputChange(setInterestRate)}
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="loanTerm">Loan Term (years)</label>
+            <input
+              id="loanTerm"
+              type="text"
+              value={loanTerm}
+              onChange={handleInputChange(setLoanTerm)}
+            />
+          </div>
+          <div className="loan-results">
+            <p>Monthly Payment: ${formatNumber(monthlyPayment)}</p>
+            <p>Total Interest Paid: ${formatNumber(totalInterest)}</p>
+            <p>Total Cost of Loan: ${formatNumber(totalLoanCost)}</p>
+            <p>Total Cost (including Down Payment): ${formatNumber(totalCostWithDownPayment)}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="amortization-schedule">
+          <table>
+            <thead>
+              <tr>
+                <th>Payment</th>
+                <th>Principal</th>
+                <th>Interest</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {amortizationSchedule.map((payment, index) => (
+                <tr key={index}>
+                  <td>{payment.payment}</td>
+                  <td>${formatNumber(payment.principalPayment.toFixed(2))}</td>
+                  <td>${formatNumber(payment.interestPayment.toFixed(2))}</td>
+                  <td>${formatNumber(payment.balance.toFixed(2))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [totalCash, setTotalCash] = useState(() => {
+    const saved = localStorage.getItem('totalCash');
+    return saved !== null ? parseFloat(saved) : 34000;
+  });
+  const [monthlyIncome, setMonthlyIncome] = useState(() => {
+    const saved = localStorage.getItem('monthlyIncome');
+    return saved !== null ? parseFloat(saved) : 5000;
+  });
+  const [creditCardDebt, setCreditCardDebt] = useState(() => {
+    const saved = localStorage.getItem('creditCardDebt');
+    return saved !== null ? parseFloat(saved) : 2000;
+  });
+  const [investments, setInvestments] = useState(() => {
+    const saved = localStorage.getItem('investments');
+    return saved !== null ? parseFloat(saved) : 50000;
+  });
+  const [carPayment, setCarPayment] = useState(() => {
+    const saved = localStorage.getItem('carPayment');
+    return saved !== null ? parseFloat(saved) : 300;
+  });
+  const [mortgageRent, setMortgageRent] = useState(() => {
+    const saved = localStorage.getItem('mortgageRent');
+    return saved !== null ? parseFloat(saved) : 1200;
+  });
+  const [studentLoans, setStudentLoans] = useState(() => {
+    const saved = localStorage.getItem('studentLoans');
+    return saved !== null ? parseFloat(saved) : 20000;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('totalCash', totalCash.toString());
+    localStorage.setItem('monthlyIncome', monthlyIncome.toString());
+    localStorage.setItem('creditCardDebt', creditCardDebt.toString());
+    localStorage.setItem('investments', investments.toString());
+    localStorage.setItem('carPayment', carPayment.toString());
+    localStorage.setItem('mortgageRent', mortgageRent.toString());
+    localStorage.setItem('studentLoans', studentLoans.toString());
+  }, [totalCash, monthlyIncome, creditCardDebt, investments, carPayment, mortgageRent, studentLoans]);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
+  const handleInputChange = (setter) => (event) => {
+    const value = parseFloat(event.target.value) || 0;
+    setter(value);
+  };
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>My Financial Health</h1>
+      </header>
+      <main>
+        <NetWorth 
+          cash={totalCash} 
+          investments={investments} 
+          debt={creditCardDebt}
+          carLoan={carPayment * 60}
+          mortgage={mortgageRent * 12 * 30}
+          studentLoans={studentLoans}
+        />
+        <div className="financial-overview">
+          <section className="input-section">
+            <h2>Finances</h2>
+            <div className="input-grid">
+              <div className="input-group">
+                <label htmlFor="totalCash">💰 Total Cash in Bank</label>
+                <input
+                  id="totalCash"
+                  type="number"
+                  value={totalCash}
+                  onChange={handleInputChange(setTotalCash)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="monthlyIncome">💼 Monthly Income</label>
+                <input
+                  id="monthlyIncome"
+                  type="number"
+                  value={monthlyIncome}
+                  onChange={handleInputChange(setMonthlyIncome)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="creditCardDebt">💳 Credit Card Debt</label>
+                <input
+                  id="creditCardDebt"
+                  type="number"
+                  value={creditCardDebt}
+                  onChange={handleInputChange(setCreditCardDebt)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="investments">📈 Investments</label>
+                <input
+                  id="investments"
+                  type="number"
+                  value={investments}
+                  onChange={handleInputChange(setInvestments)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="carPayment">🚗 Car Payment</label>
+                <input
+                  id="carPayment"
+                  type="number"
+                  value={carPayment}
+                  onChange={handleInputChange(setCarPayment)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="mortgageRent">🏠 Mortgage/Rent</label>
+                <input
+                  id="mortgageRent"
+                  type="number"
+                  value={mortgageRent}
+                  onChange={handleInputChange(setMortgageRent)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="studentLoans">🎓 Student Loans</label>
+                <input
+                  id="studentLoans"
+                  type="number"
+                  value={studentLoans}
+                  onChange={handleInputChange(setStudentLoans)}
+                />
+              </div>
+            </div>
+          </section>
+          <section className="dashboard-section">
+            <h2>Dashboard</h2>
+            <div className="dashboard-grid">
+              <DashboardItem title="Total Cash in Bank" value={formatCurrency(totalCash)} icon="💰" />
+              <DashboardItem title="Monthly Income" value={formatCurrency(monthlyIncome)} icon="💼" />
+              <DashboardItem title="Credit Card Debt" value={formatCurrency(creditCardDebt)} icon="💳" />
+              <DashboardItem title="Investments" value={formatCurrency(investments)} icon="📈" />
+              <DashboardItem title="Car Payment" value={formatCurrency(carPayment)} icon="🚗" />
+              <DashboardItem title="Mortgage/Rent" value={formatCurrency(mortgageRent)} icon="🏠" />
+              <DashboardItem title="Student Loans" value={formatCurrency(studentLoans)} icon="🎓" />
+            </div>
+          </section>
+        </div>
+        <LoanCalculator />
+      </main>
+    </div>
+  );
+}
+
+export default App;
